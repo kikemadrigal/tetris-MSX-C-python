@@ -135,16 +135,6 @@ def capture_events_with_pause():
         elif event.name=="space":
             (screen,rotation)=move_piece(screen,Movement.ROTATE,rotation)
 
-def dibuja_cuadricula(lc):
-    print('\n')
-    print('__________')
-    print('                         ''                    ')
-    print('     {}     {}     {}    ''    1     2     3   '.format(lc[0],lc[1],lc[2]))
-    print('                         ''                    ')
-    print('     {}     {}     {}    ''    4     5     6   '.format(lc[3],lc[4],lc[5]))
-    print('                         ''                    ')
-    print('     {}     {}     {}    ''    7     8     9   '.format(lc[6],lc[7],lc[8]))
-    print('__________')
 
 if __name__ == "__main__":
     main()
