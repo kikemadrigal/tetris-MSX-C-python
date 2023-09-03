@@ -2,8 +2,16 @@
 
 Juego de prueba
 
-<img src="docs/image.JPG" width="300">
+## MSX-C
 
-# play online
+<img src="docs/MSX-C.PNG" width="300">
+
+### Play online
 
 https://kikemadrigal.github.io/tetris/?disk=game.dsk
+
+## Pyton
+
+<img src="docs/python.PNG" height="400">
+
+
