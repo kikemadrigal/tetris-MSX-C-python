@@ -145,8 +145,9 @@ def dibuja_cuadricula(lc):
     print('                         ''                    ')
     print('     {}     {}     {}    ''    7     8     9   '.format(lc[6],lc[7],lc[8]))
     print('__________')
-
-main()
+ 
+if __name__ == "__main__":
+    main()
 
 #rotations=[
 #    [(0,0),(1,0),(1,1),(1,2)],
