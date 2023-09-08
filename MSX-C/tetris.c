@@ -31,6 +31,7 @@ void insert_piece_into_table(void);
 void paint_stage(void);
 void HUD();
 void debug(char word1, char word2, char word3);
+void print_message_with_pause(char message[]);
 void menu(void);
 void show_end_game(void);
 
@@ -79,10 +80,11 @@ void main(void)
   paint_stage();
   print_table();
   insert_piece_into_table();
-  PutText(0,176,"Press any key to start",0);
-  WaitKey();
+  print_message_with_pause("Press any key to start");
+  KillKeyBuffer();
   game_over=0;
-
+  old_counter=0;
+  level=0;
   while (game_over==0)
   {
     movement=procesar_entrada_joyStick();
@@ -91,7 +93,7 @@ void main(void)
     if ((counter-old_counter)>0.50-(level*0.30)){
       move_piece(DOWN);
       counter_level++;
-      if(counter_level>=10){
+      if(counter_level>10){
         counter_level=0;
         HUD();
         level++;
@@ -103,9 +105,9 @@ void main(void)
     }
     check_lines();
   }
+  
   show_end_game();
   memcpy(table,table_empty,sizeof(table));
-  WaitForKey();
   goto inicio;
 }
 
@@ -198,14 +200,14 @@ void move_piece(char movement){
         }
 
         
-        
+        /*
         if(new_row_index<6 && new_piece==0){
           //game_over=1;
         }else if(new_row_index>5 && new_row_index<10 && new_piece==1){
           new_piece=0;
         }
         debug(new_row_index,new_piece,game_over);
-           
+        */
         
         
         char letter_down=table[f+1][c];
@@ -221,10 +223,16 @@ void move_piece(char movement){
         //if(is_static_piece(letter_down) && !is_static_piece(letter_left) && !is_static_piece(letter_right)){
         //Si la pieza de abajo es una estática o Si es la última fila la convertimos en estática salimos, ponemos rotation 0 ya que es global 
         if(is_static_piece(letter_down) || new_row_index==NUMERO_FILAS){
-          rotation=0;
-          convertir_piece_to_static(piece_number); 
-          insert_piece_into_table();
-          return;
+          Beep();
+          if(new_row_index<6){
+            game_over=1;
+            return;
+          }else{
+            rotation=0;
+            convertir_piece_to_static(piece_number); 
+            insert_piece_into_table();
+            return;
+          }
         }
 
  
@@ -267,11 +275,11 @@ void HUD(){
     char value_score=score%10;
     Vpoke(6390+i,24+value_score);
   }*/
-  Vpoke(6390,24+score);
+  Vpoke(6390,25+score);
   //Imprimimos la letra
-  Vpoke(6486,24+piece_number);
+  Vpoke(6486,25+piece_number);
   //imprimimos el tiempo
-  Vpoke(6582,24+level);
+  Vpoke(6582,25+level);
 }
 
 void debug(char word1, char word2, char word3){
@@ -291,11 +299,12 @@ void debug(char word1, char word2, char word3){
 void insert_piece_into_table(void){
   //Obtenemos la letra que vamos a soltar
   char rand_piece=rand()%sizeof(array_number_pieces);
-  char piece_letter=get_piece_Letter(rand_piece);
-  TPiece *piece=create_piece(piece_letter);
-  new_piece=1;
-  piece_number=piece->number;
-  switch (piece->number)
+  //char piece_letter=get_piece_Letter(rand_piece);
+  //TPiece *piece=create_piece(piece_letter);
+  //piece_number=piece->number;
+  //switch (piece->number)
+  piece_number=rand_piece;
+  switch (rand_piece)
   {
     //char array_numbre_pieces[]={'L','J','Z','S','O','T','I'};
     //Si es la L
@@ -459,18 +468,29 @@ void paint_stage(void){
   }
 }
 
+void print_message_with_pause(char *message ){
+    PutText(0,176,message,0);
+    WaitKey();
+    for (char i=0;i<32;i++) Vpoke(6848+i,15);
+}
+
 void show_end_game(void){
   int direction=6210;
   //6144+32(1 fila)+32(2 fila)+2(margen izquierdo)
   for(int f=0;f<NUMERO_FILAS;f++){
     for(int c=0;c<NUMERO_COLUMNAS;c++){  
-      if(f<8) Vpoke(direction+c,15);
-      else if(f>=8 && f<16) Vpoke(direction+c,15);
-      else if(f>=16 && f<24) Vpoke(direction+c,15);
+      if(table[f][c]>7 && table[f][c]<15){
+        if(f<8) Vpoke(direction+c,16);
+        else if(f>=8 && f<16) Vpoke(direction+c,16);
+        else if(f>=16 && f<24) Vpoke(direction+c,16);
+      }
+
     }
     direction+=32;
   }
   print_table();
+  KillKeyBuffer();
+  print_message_with_pause("Game over");
 }
 
 void menu(void){
