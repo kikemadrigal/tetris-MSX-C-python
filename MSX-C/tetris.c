@@ -6,206 +6,141 @@
 /**************DECLARACIONES************/
 
 #include "fusion-c/header/msx_fusion.h"
-#include "fusion-c/header/vdp_graph2.h"
+#include "fusion-c/header/vdp_graph1.h"
+//#include "fusion-c/header/vdp_graph2.h"
 #include "fusion-c/header/vdp_sprites.h"
 #include "src/definitions.c"
 #include "src/pieces.c"
+#include "src/utils.c"
 #include<stdio.h>
 // Para el memcpy
 #include <string.h>
 //rand y srand http://cplusplus.com/reference/cstdlib/rand/
 #include <stdlib.h>
 
-#define RIGHT 3
-#define LEFT 7
-#define UP 1
-#define DOWN 5
-#define ROTATE 10
+
 
 
 void print_table(void);
-//void inicializar_sprites(void);
-char procesar_entrada_joyStick(char movement);
-char procesar_entrada_teclado(char movement);
-char* move_piece(char movement,char rotation);
-void debug(char word1,char word2);
-void pintar_escenario(void);
+void move_piece(char movement);
+void convertir_piece_to_static(char piece_number);
+void check_lines(void);
+char esta_suelto(char fila, char columna);
+
 void insert_piece_into_table(void);
+void paint_stage(void);
+void HUD();
+void debug(char word1, char word2, char word3);
+void menu(void);
+void show_end_game(void);
 
 //La tabla y los tamaños de la tabla está definidos en src/definitions.c
-char new_rotation=0;
-char piece_letter='J';
 
+char piece_number=1;
+int counter=0;
+int old_counter=0;
+
+
+char movement=0; 
+char rotation=0;
+int score=0;
+int level=0;
+char counter_level=0;
+char game_over=0;
+char new_piece=0;
+int time=0;
 void main(void) 
 {
-  char movement=0;
-  char rotation=0;
-  int time=0;
-  int counter=0;
-  int old_counter=0;
-  int counter_letter=0;
-  int old_counter_letter=0;
-  Screen(1);
+
+
+
+
+  inicio:
   KeySound(0);
   SetColors(15,1,1);
-  //Kitamos el dibujo del cuadrado del cursor
-  #ifdef __SDCC
-    __asm
-        ld a,#0
-        ld (#0xFCA9),a
-    __endasm; 
-  #endif
-
   SetRealTimer(0);
-  Locate(9,5);
-  Print("Titris");
-  Locate(7,7);
-  Print("by MSX spain");
-  Locate(0,12);
-  Print("Type the number of players");
-  Locate(6,14);
-  Print("1 to 2 players");
-  WaitKey();
-  Cls();
-  pintar_escenario();
-  insert_piece_into_table();
-  print_table();
+  menu();
+  Screen(2);
 
-  while (1)
+  //inicializar_sprites();
+  //Tileset
+  unsigned int vram_adr_tiles_pat=Peekw(0x0);		
+  unsigned int vram_adr_tiles_col=Peekw(0x2000);		
+  CopyRamToVram(TILESET_pat,0,8*60);
+  CopyRamToVram(TILESET_pat,2048,8*60);
+  CopyRamToVram(TILESET_pat,4096,8*60);
+  CopyRamToVram(TILESET_col,8192,8*60);
+  CopyRamToVram(TILESET_col,10240,8*60);
+  CopyRamToVram(TILESET_col,12288,8*60);
+  //ponemos la tabla de nombres todo a 255
+  //FillVram(6144,255,768);
+  /********Final menú bienvenida*********/
+
+  paint_stage();
+  print_table();
+  insert_piece_into_table();
+  PutText(0,176,"Press any key to start",0);
+  WaitKey();
+  game_over=0;
+
+  while (game_over==0)
   {
-    //movement=procesar_entrada_teclado(movement);
-    movement=procesar_entrada_joyStick(movement);
+    movement=procesar_entrada_joyStick();
     time=RealTimer();
     counter=time/60;
-    counter_letter=time/60;
-    int result=counter-old_counter;
-    if (result>2){
-      char *new_table_down=move_piece(DOWN,rotation);
-      memcpy(table,new_table_down,sizeof(table));
-      print_table();
+    if ((counter-old_counter)>0.50-(level*0.30)){
+      move_piece(DOWN);
+      counter_level++;
+      if(counter_level>=10){
+        counter_level=0;
+        HUD();
+        level++;
+      }
       old_counter=counter;
     }
-    if (counter_letter-old_counter_letter>10){
-      //piece_letter=rand()%sizeof(arrayPieces);
-      Locate(22,11);
-      PrintChar(piece_letter);
-      old_counter_letter=counter_letter;
-    }
-    if (movement==ROTATE){
-      if (rotation>2){
-        rotation=0;
-      }else{
-        rotation++;
-      } 
-    }
     if(movement!=0){
-      char *new_table=move_piece(movement,rotation);
-      memcpy(table,new_table,sizeof(table));
-      print_table();
+      move_piece(movement);   
     }
-
-
-
+    check_lines();
   }
-  
-}
-
-
-void print_table(void){
-  printf("\n\n\r");
-  for(int f=0;f<NUMERO_FILAS;f++){
-    Locate(2,f+1);
-    for(int c=0;c<NUMERO_COLUMNAS;c++){  
-      printf("%c",table[f][c]);
-    }
-    printf("\n\r");
-  }
+  show_end_game();
+  memcpy(table,table_empty,sizeof(table));
+  WaitForKey();
+  goto inicio;
 }
 
 
 
 
 
-char procesar_entrada_joyStick(char movement){
-  //Leemos el disparo
-  movement=0;
-  char joy=JoystickRead(0);
-  switch (joy)
-  {
-    //Movimiento arriba
-    case 1:
-        movement=UP;
-        break;
-    //Moviemiento derecha
-    case 3:
-        movement=RIGHT;
-        break;
-    //Mociemiento abajo
-    case 5:
-        movement=DOWN;
-        break;
-    //Moviemiento izquierda
-    case 7:
-        movement=LEFT;
-        break;
-    //default:
-        //movement=0;
-       // break;
-  } 
-  char trigger = TriggerRead(0);
-  if (trigger!=0) {
-    movement=ROTATE;
-  }
-  return movement;
-}
-
-char procesar_entrada_teclado(char movement){
-  char key=WaitKey();
-  switch (key)
-  {
-    //Movimiento arriba
-    case 30:
-        movement=UP;
-        break;
-    //Moviemiento derecha
-    case 28:
-        movement=RIGHT;
-        break;
-    //Mociemiento abajo
-    case 31:
-        movement=DOWN;
-        break;
-    //Moviemiento izquierda
-    case 29:
-        movement=LEFT;
-        break;
-    default:
-        movement=0;
-        break;
-  } 
-  return movement;
-}
 
 
-char* move_piece(char movement,char rotation){
+void move_piece(char movement){
+
   signed char new_row_index=0;
   signed char new_column_index=0;
+  //Rotation es una variable global y determina la rotación de la pieza que hay en uso
+  if (movement==ROTATE){
+    if (rotation==3){
+      rotation=0;
+    }else{
+     rotation++;
+    } 
+  }
 
-  char new_table[NUMERO_FILAS][NUMERO_COLUMNAS];
-  memcpy(new_table,empty_table,sizeof(table));
-
-  new_rotation=rotation;
   char rotation_item=0;
-
-  
-
-
-  for(int f=0;f<NUMERO_FILAS;f++){
-    for(int c=0;c<NUMERO_COLUMNAS;c++){
-      if(table[f][c]==piece_letter){
+  signed char indezex[4][2];
+  signed int new_indezex[4][2];
+  char item=0;
+  char toca_abajo=0;
+  char permitido=1;
+  //Recorremos todo el tablero en busca de los 4 itms de la pieza
+  for(signed int f=0;f<NUMERO_FILAS;f++){
+    for(signed int c=0;c<NUMERO_COLUMNAS;c++){
+      if(table[f][c]==piece_number){
         if (movement==UP){
-          new_row_index=f-1;
-          new_column_index=c;
+          //new_row_index=f-1;
+          //new_column_index=c;
         }else if(movement==RIGHT){
           new_row_index=f;
           new_column_index=c+1;
@@ -216,93 +151,274 @@ char* move_piece(char movement,char rotation){
           new_row_index=f;
           new_column_index=c-1;
         }else if(movement==ROTATE){
-          new_row_index=f+jRotations[new_rotation][rotation_item][0];
-          new_column_index=c+jRotations[new_rotation][rotation_item][1];
+          switch (piece_number)
+          {
+            //Si es la L
+            case 1:
+                new_row_index=f+lRotations[rotation][rotation_item][0];
+                new_column_index=c+lRotations[rotation][rotation_item][1];
+              break;
+            //Si es la J
+            case 2:
+                new_row_index=f+jRotations[rotation][rotation_item][0];
+                new_column_index=c+jRotations[rotation][rotation_item][1];
+                break;
+            //Si es la Z
+            case 3:
+                new_row_index=f+zRotations[rotation][rotation_item][0];
+                new_column_index=c+zRotations[rotation][rotation_item][1];
+                break;
+            //Si es la S
+            case 4:
+                new_row_index=f+sRotations[rotation][rotation_item][0];
+                new_column_index=c+sRotations[rotation][rotation_item][1];
+                break;
+            //Si es la T
+            case 5:
+                new_row_index=f+tRotations[rotation][rotation_item][0];
+                new_column_index=c+tRotations[rotation][rotation_item][1];
+                break;
+            //Si es la O
+            case 6:
+                new_row_index=f+oRotations[rotation][rotation_item][0];
+                new_column_index=c+oRotations[rotation][rotation_item][1];
+                break;
+            //Si es la I
+            case 7:
+                new_row_index=f+iRotations[rotation][rotation_item][0];
+                new_column_index=c+iRotations[rotation][rotation_item][1];
+                break;
+          }
+          if( new_row_index>=NUMERO_FILAS || new_column_index<0 || new_column_index>=NUMERO_COLUMNAS){
+            rotation--;
+            //Beep();
+            return;
+          }
           rotation_item+=1;
         }
-      
-        if(new_row_index>=0 && new_row_index<NUMERO_FILAS && new_column_index>=0 && new_column_index<NUMERO_COLUMNAS){
-          new_table[new_row_index][new_column_index]=piece_letter;
-        }else{
-          return &table[0][0];
+
+        
+        
+        if(new_row_index<6 && new_piece==0){
+          //game_over=1;
+        }else if(new_row_index>5 && new_row_index<10 && new_piece==1){
+          new_piece=0;
         }
-       
-      }//Fin del if='X'
+        debug(new_row_index,new_piece,game_over);
+           
+        
+        
+        char letter_down=table[f+1][c];
+        /*char letter_left=table[f][c-1];
+        char letter_right=table[f][c+1];
+        if(letter_left!=0 || letter_right!=0)
+        {
+          //Beep();
+          permitido=0;
+        }*/
+
+ 
+        //if(is_static_piece(letter_down) && !is_static_piece(letter_left) && !is_static_piece(letter_right)){
+        //Si la pieza de abajo es una estática o Si es la última fila la convertimos en estática salimos, ponemos rotation 0 ya que es global 
+        if(is_static_piece(letter_down) || new_row_index==NUMERO_FILAS){
+          rotation=0;
+          convertir_piece_to_static(piece_number); 
+          insert_piece_into_table();
+          return;
+        }
+
+ 
+
+        
+        //if(new_row_index<1 || new_row_index>=NUMERO_FILAS-1 || new_column_index<1 || new_column_index>=NUMERO_COLUMNAS-1){
+        if(new_row_index<0 || new_row_index>=NUMERO_FILAS || new_column_index<0 || new_column_index>=NUMERO_COLUMNAS){
+          return;
+        }else{
+          
+          indezex[item][0]=f;
+          indezex[item][1]=c;
+          new_indezex[item][0]=new_row_index;
+          new_indezex[item][1]=new_column_index;
+          item++;
+        }
+
+      }//Fin del if=X
     }//Fin del for c
   }//Fin del for f
 
-  memcpy(table,new_table,sizeof(table));
-  //rotation=new_rotation;
-  return &new_table[0][0];
-}
-
-
-void debug(char word1,char word2){
-  Locate(0,17);
-  Print("Debug: ");
-  PrintDec(word1);
-  Print(" , ");
-  PrintDec(word2);
-  Print(" \n");
-}
-
-void pintar_escenario(void){
-  Locate(4,0);
-  Print("TETRIS by MSX spain");
-  Locate(14,7);
-  Print("Player: ");
-  Locate(14,9);
-  Print("Score: ");
-  Locate(14,11);
-  Print("Piece: ");
-  for(int i=2;i<NUMERO_FILAS+2;i++){
-    Locate(1,i);
-    Print("|");
-    Locate(12,i);
-    Print("|");
-  }
-  for(int i=2;i<NUMERO_COLUMNAS+2;i++){
-    Locate(i,21);
-    Print("-");
-  }
-  
  
+
+
+  //Ponemos un 0 o la letra según lo hayamos almacenado en los 2 arrays
+  for(char i=0;i<4;i++){
+    table[indezex[i][0]][indezex[i][1]]=0;
+  }
+  for(char i=0;i<4;i++){
+    table[new_indezex[i][0]][new_indezex[i][1]]=piece_number;
+  }
+  print_table();
 }
+
+
+
+void HUD(){
+  /*char size_score=lenHelper(score);
+  for(char i=0;i<size_score;i++){
+    char value_score=score%10;
+    Vpoke(6390+i,24+value_score);
+  }*/
+  Vpoke(6390,24+score);
+  //Imprimimos la letra
+  Vpoke(6486,24+piece_number);
+  //imprimimos el tiempo
+  Vpoke(6582,24+level);
+}
+
+void debug(char word1, char word2, char word3){
+  //for (char i=0;i<sizeof(word1);i++)
+  /*char size_word1=lenHelper(word1);
+  for(char i=0;i<size_word1;i++){
+    char value_word1=word1%10;
+    Vpoke(6390+i,24+value_word1);
+  }*/
+  Vpoke(6422,24+word1);
+  Vpoke(6518,24+word2);
+  Vpoke(6614,24+word3);
+}
+
+
 
 void insert_piece_into_table(void){
   //Obtenemos la letra que vamos a soltar
-  int rand_piece=rand()%sizeof(arrayPieces);
-  piece_letter=arrayPieces[rand_piece];
-  Locate(22,11);
-  PrintChar(piece_letter);
-  piece_letter='J';
-  switch (piece_letter)
+  char rand_piece=rand()%sizeof(array_number_pieces);
+  char piece_letter=get_piece_Letter(rand_piece);
+  TPiece *piece=create_piece(piece_letter);
+  new_piece=1;
+  piece_number=piece->number;
+  switch (piece->number)
   {
-    //char arrayPieces[]={'L','J','Z','S','O','T','I'};
-    case 'J':
-        memcpy(table,jPieceString,sizeof(jPieceString));
+    //char array_numbre_pieces[]={'L','J','Z','S','O','T','I'};
+    //Si es la L
+    case 1:
+        memcpy(table,lPiece,sizeof(lPiece));
         break;
-    case 'L':
-        memcpy(table,lPieceString,sizeof(lPieceString));
+    //Si es la J
+    case 2:
+        memcpy(table,jPiece,sizeof(jPiece));
         break;
-    case 'Z':
-        memcpy(table,zPieceString,sizeof(zPieceString));
+    //Si es la Z
+    case 3:
+        memcpy(table,zPiece,sizeof(zPiece));
         break;
-    case 'S':
-        memcpy(table,sPieceString,sizeof(sPieceString));
+    //Si es la S
+    case 4:
+        memcpy(table,sPiece,sizeof(sPiece));
         break;
-    case 'O':
-        memcpy(table,oPieceString,sizeof(oPieceString));
+    //Si es la O
+    case 5:
+        memcpy(table,tPiece,sizeof(oPiece));
         break;
-    case 'T':
-        memcpy(table,tPieceString,sizeof(tPieceString));
+    //Si es la T
+    case 6:
+        memcpy(table,oPiece,sizeof(tPiece));
         break;
-    case 'I':
-        memcpy(table,iPieceString,sizeof(iPieceString));
+    //Si es la I
+    case 7:
+        memcpy(table,iPiece,sizeof(iPiece));
         break;
   }
-  //Le metemos la pieza "jPiece" al tablero
- 
+  print_table();
+  HUD();
+}
+
+
+
+void convertir_piece_to_static(char piece_number){
+  for(signed int f=0;f<NUMERO_FILAS;f++){
+    for(signed int c=0;c<NUMERO_COLUMNAS;c++){
+      if(table[f][c]==piece_number){
+        table[f][c]=piece_number+7;
+      }
+    }
+  }
+  print_table();
+}
+
+
+void check_lines(void){
+  //char completed_line=0;
+  char lines_completes[NUMERO_FILAS]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  char clean_lines_completed=0;
+  char number_line=0;
+  char check_sueltos=0;
+  char item=0;
+  for(signed int f=0;f<NUMERO_FILAS;f++){
+        char item0=table[f][0];
+        char item1=table[f][1];
+        char item2=table[f][2];
+        char item3=table[f][3];
+        char item4=table[f][4];
+        char item5=table[f][5];
+        char item6=table[f][6];
+        char item7=table[f][7];
+        char item8=table[f][8];
+        char item9=table[f][9];
+        if(item0>7 && item1>7 && item2>7 && item3>7 && item4>7 && item5>7 && item6>7 && item7>7 && item8>7 && item9>7){
+          lines_completes[clean_lines_completed]=f;
+          score+=1;
+          HUD();
+          clean_lines_completed++;
+          check_sueltos=1;
+        }
+  }
+  //HUD( clean_lines_completed,number_line,0);
+  //Se borra la linea
+  for(char i=0;i<clean_lines_completed;i++){
+    for(signed int f=0;f<NUMERO_FILAS;f++){
+      for(signed int c=0;c<NUMERO_COLUMNAS;c++){
+        if (f==lines_completes[i])
+        {
+          table[f][c]=0;
+          Beep();
+        }
+      }
+    }
+  }
+  
+  if(check_sueltos){
+      for(signed int f=0;f<NUMERO_FILAS;f++){
+        for(signed int c=0;c<NUMERO_COLUMNAS;c++){
+          while (esta_suelto(f,c)==1)
+          {
+            if (table[f][c]>7)
+            {
+              table[f+1][c]=table[f][c];
+              table[f][c]=0;
+            }
+          }
+        }
+      }
+  }
+
+  
+}
+
+
+
+char esta_suelto(char fila, char columna){
+  char suelto=0;
+  for(signed int f=0;f<NUMERO_FILAS;f++){
+    for(signed int c=0;c<NUMERO_COLUMNAS;c++){
+      if(f==fila && c==columna){
+        char piece_number=table[f][c];
+        char piece_down=table[f+1][c];
+        if(piece_number>7 && piece_down==0){
+          suelto= 1;
+        }
+      }
+    }
+  }
+  return suelto;
 }
 
 
@@ -318,13 +434,67 @@ void insert_piece_into_table(void){
 
 
 
+void print_table(void){
+  int direction=6210;
+  //6144+32(1 fila)+32(2 fila)+2(margen izquierdo)
+  for(int f=0;f<NUMERO_FILAS;f++){
+    for(int c=0;c<NUMERO_COLUMNAS;c++){  
+      char piece=table[f][c];
+      if(f<8) Vpoke(direction+c,piece);
+      else if(f>=8 && f<16) Vpoke(direction+c,piece);
+      else if(f>=16 && f<24) Vpoke(direction+c,piece);
+    }
+    direction+=32;
+  }
+}
+void paint_stage(void){
+  int direction=6144;
+  for (char f=0; f<22;f++){
+      for (char c=0; c<32;c++){
+        if(f<8) Vpoke(direction+c,scene[f][c]-1);
+        else if(f>=8 && f<16) Vpoke(direction+c,scene[f][c]-1);
+        else if(f>=16 && f<24) Vpoke(direction+c,scene[f][c]-1);
+      }
+      direction+=32;
+  }
+}
 
+void show_end_game(void){
+  int direction=6210;
+  //6144+32(1 fila)+32(2 fila)+2(margen izquierdo)
+  for(int f=0;f<NUMERO_FILAS;f++){
+    for(int c=0;c<NUMERO_COLUMNAS;c++){  
+      if(f<8) Vpoke(direction+c,15);
+      else if(f>=8 && f<16) Vpoke(direction+c,15);
+      else if(f>=16 && f<24) Vpoke(direction+c,15);
+    }
+    direction+=32;
+  }
+  print_table();
+}
 
+void menu(void){
+  Screen(1);
+    /**********Menú de bienvenida *********/
+  Locate(9,5);
+  Print("Titris");
+  Locate(7,7);
+  Print("by MSX spain");
+  Locate(0,12);
+  Print("Type the number of players");
+  Locate(6,14);
+  Print("1 to 2 players");
+  Locate(7,15);
+  for(char i=11;i<14;i++){
+    Locate(i,17);
+    //printf("%c",255);
+    PrintChar(255);
+  }
+  Locate(12,18);
+  WaitKey();
+  Cls();
 
-
-
-
-
+}
 
 
 
