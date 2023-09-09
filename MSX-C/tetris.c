@@ -46,7 +46,6 @@ char movement=0;
 char rotation=0;
 int score=0;
 int level=0;
-char counter_level=0;
 char game_over=0;
 char new_piece=0;
 int time=0;
@@ -74,7 +73,7 @@ void main(void)
   CopyRamToVram(TILESET_col,10240,8*60);
   CopyRamToVram(TILESET_col,12288,8*60);
   //ponemos la tabla de nombres todo a 255
-  //FillVram(6144,255,768);
+  FillVram(6144,255,768);
   /********Final menú bienvenida*********/
 
   paint_stage();
@@ -90,14 +89,9 @@ void main(void)
     movement=procesar_entrada_joyStick();
     time=RealTimer();
     counter=time/60;
-    if ((counter-old_counter)>0.50-(level*0.30)){
+    if ((counter-old_counter)>0.20){
       move_piece(DOWN);
-      counter_level++;
-      if(counter_level>10){
-        counter_level=0;
-        HUD();
-        level++;
-      }
+      HUD();
       old_counter=counter;
     }
     if(movement!=0){
@@ -105,11 +99,11 @@ void main(void)
     }
     check_lines();
   }
-  
-  show_end_game();
-  memcpy(table,table_empty,sizeof(table));
   goto inicio;
 }
+
+
+
 
 
 
@@ -223,16 +217,22 @@ void move_piece(char movement){
         //if(is_static_piece(letter_down) && !is_static_piece(letter_left) && !is_static_piece(letter_right)){
         //Si la pieza de abajo es una estática o Si es la última fila la convertimos en estática salimos, ponemos rotation 0 ya que es global 
         if(is_static_piece(letter_down) || new_row_index==NUMERO_FILAS){
-          Beep();
-          if(new_row_index<6){
+           Beep();
+
+          if(new_row_index<6) {
             game_over=1;
-            return;
+            show_end_game();
+            KillKeyBuffer();
+            print_message_with_pause("Game over");
+            memcpy(table,table_empty,sizeof(table));
           }else{
             rotation=0;
             convertir_piece_to_static(piece_number); 
             insert_piece_into_table();
-            return;
           }
+ 
+
+          return;
         }
 
  
@@ -469,7 +469,12 @@ void paint_stage(void){
 }
 
 void print_message_with_pause(char *message ){
-    PutText(0,176,message,0);
+    int i=0;
+    while(message[i]!='\0'){
+      char value=get_letter(message[i]);
+      Vpoke(6848+i,value);
+      i++;
+    }
     WaitKey();
     for (char i=0;i<32;i++) Vpoke(6848+i,15);
 }
@@ -480,17 +485,13 @@ void show_end_game(void){
   for(int f=0;f<NUMERO_FILAS;f++){
     for(int c=0;c<NUMERO_COLUMNAS;c++){  
       if(table[f][c]>7 && table[f][c]<15){
-        if(f<8) Vpoke(direction+c,16);
-        else if(f>=8 && f<16) Vpoke(direction+c,16);
-        else if(f>=16 && f<24) Vpoke(direction+c,16);
+        table[f][c]=16;
       }
 
     }
     direction+=32;
   }
   print_table();
-  KillKeyBuffer();
-  print_message_with_pause("Game over");
 }
 
 void menu(void){
