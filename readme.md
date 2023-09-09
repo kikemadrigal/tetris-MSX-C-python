@@ -8,7 +8,7 @@ Juego de prueba
 
 ### Play online
 
-https://kikemadrigal.github.io/tetris-MSX-C-python/?disk=game.dsk
+https://kikemadrigal.github.io/tetris-MSX-C-python/?disk=game2.dsk
 
 
 
