@@ -26,7 +26,10 @@ void move_piece(char movement);
 void convertir_piece_to_static(char piece_number);
 void check_completed_lines(void);
 char check_sueltos(void);
-
+// Consiguración del VDP
+void inicializar_sprites(void);
+//Para ir poniendo los sprites de los players del 1 al 4
+void copy_sprites_definition_to_VRAM(void);
 void insert_piece_into_table(void);
 void paint_stage(void);
 void HUD();
@@ -61,8 +64,7 @@ void main(void)
   SetRealTimer(0);
   menu();
   Screen(2);
-
-  //inicializar_sprites();
+  inicializar_sprites();
   //Tileset
   unsigned int vram_adr_tiles_pat=Peekw(0x0);		
   unsigned int vram_adr_tiles_col=Peekw(0x2000);		
@@ -309,36 +311,51 @@ void insert_piece_into_table(void){
   //Obtenemos la letra que vamos a soltar
   char rand_piece=rand()%(8-1)+1;
   piece_number=rand_piece;
+  
   switch (rand_piece)
   {
     //char array_numbre_pieces[]={'L','J','Z','S','O','T','I'};
     //Si es la L
     case 1:
         memcpy(table,lPiece,sizeof(lPiece));
+        //Pieza L color naranja 
+        PutSprite(piece_number,0,140,140,9);
         break;
     //Si es la J
     case 2:
+      //Pieza J color azul  
         memcpy(table,jPiece,sizeof(jPiece));
+        PutSprite(piece_number,0,140,140,7);
         break;
     //Si es la Z
     case 3:
+        //Pieza Z color rojo
         memcpy(table,zPiece,sizeof(zPiece));
+        PutSprite(piece_number,0,140,140,6);
         break;
     //Si es la S
     case 4:
+        //Pieza S color verde
         memcpy(table,sPiece,sizeof(sPiece));
+        PutSprite(piece_number,0,140,140,2);
         break;
     //Si es la O
     case 5:
+        //Pieza T color Morado  
         memcpy(table,tPiece,sizeof(oPiece));
+        PutSprite(piece_number,0,140,140,13);
         break;
     //Si es la T
     case 6:
+        //Pieza O color amarillo
         memcpy(table,oPiece,sizeof(tPiece));
+        PutSprite(piece_number,0,140,140,11);
         break;
     //Si es la I
     case 7:
+        //Pieza I color Cyan
         memcpy(table,iPiece,sizeof(iPiece));
+        PutSprite(piece_number,0,140,140,5);
         break;
   }
   print_table();
@@ -496,6 +513,23 @@ void menu(void){
 }
 
 
+
+void inicializar_sprites(){
+  //Ponemos a 0 todos los sprites
+  SpriteReset(); 
+  // tamaño de sprites 16x16
+  Sprite16(); 
+  // tamaño de sprites sin ampliar   
+  SpriteSmall(); 
+  SetSpritePattern(0,sprite_piece_l,32);
+  SetSpritePattern(1*4,sprite_piece_j,32);
+  SetSpritePattern(2*4,sprite_piece_z,32);
+  SetSpritePattern(3*4,sprite_piece_s,32);
+  SetSpritePattern(4*4,sprite_piece_o,32);
+  SetSpritePattern(5*4,sprite_piece_t,32);
+  SetSpritePattern(6*4,sprite_piece_i,32);
+
+}
 
 
 
