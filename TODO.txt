@@ -1,0 +1,4 @@
+1.Pinta los bordes a los tiles
+2.crea el array que contiene los números random para los sprites
+3.MOdifica el mapa y arregla para que salgan los prites
+4.Arregla las letras y el marcador para que salgan más de 2 cifras
