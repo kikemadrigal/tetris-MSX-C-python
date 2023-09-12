@@ -24,8 +24,8 @@
 void print_table(void);
 void move_piece(char movement);
 void convertir_piece_to_static(char piece_number);
-void check_completed_lines(void);
-char check_sueltos(void);
+void check_lines(void);
+char esta_suelto(char fila, char columna);
 
 void insert_piece_into_table(void);
 void paint_stage(void);
@@ -97,7 +97,7 @@ void main(void)
     if(movement!=0){
       move_piece(movement);   
     }
-    //check_lines();
+    check_lines();
   }
   goto inicio;
 }
@@ -216,7 +216,7 @@ void move_piece(char movement){
  
         //if(is_static_piece(letter_down) && !is_static_piece(letter_left) && !is_static_piece(letter_right)){
         //Si la pieza de abajo es una estática o Si es la última fila la convertimos en estática salimos, ponemos rotation 0 ya que es global 
-        if(is_static_piece(letter_down) || new_row_index>=NUMERO_FILAS){
+        if(is_static_piece(letter_down) || new_row_index==NUMERO_FILAS){
            Beep();
 
           if(new_row_index<6) {
@@ -228,16 +228,7 @@ void move_piece(char movement){
           }else{
             rotation=0;
             convertir_piece_to_static(piece_number); 
-            //Kitamos todas las líneas compleatadas
-            check_completed_lines();
-            //Miramos i hay alguna pieza suelta
-            //while(check_sueltos()==1){
-              //Beep();
-              //move_piece(DOWN);
-              //check_completed_lines();
-            //}           
             insert_piece_into_table();
-
           }
  
 
@@ -248,7 +239,7 @@ void move_piece(char movement){
 
         
         //if(new_row_index<1 || new_row_index>=NUMERO_FILAS-1 || new_column_index<1 || new_column_index>=NUMERO_COLUMNAS-1){
-        if(new_column_index<0 || new_column_index>=NUMERO_COLUMNAS){
+        if(new_row_index<0 || new_row_index>=NUMERO_FILAS || new_column_index<0 || new_column_index>=NUMERO_COLUMNAS){
           return;
         }else{
           
@@ -307,7 +298,11 @@ void debug(char word1, char word2, char word3){
 
 void insert_piece_into_table(void){
   //Obtenemos la letra que vamos a soltar
-  char rand_piece=rand()%(8-1)+1;
+  char rand_piece=rand()%sizeof(array_number_pieces);
+  //char piece_letter=get_piece_Letter(rand_piece);
+  //TPiece *piece=create_piece(piece_letter);
+  //piece_number=piece->number;
+  //switch (piece->number)
   piece_number=rand_piece;
   switch (rand_piece)
   {
@@ -342,7 +337,7 @@ void insert_piece_into_table(void){
         break;
   }
   print_table();
-  //HUD();
+  HUD();
 }
 
 
@@ -359,49 +354,78 @@ void convertir_piece_to_static(char piece_number){
 }
 
 
-void check_completed_lines(void){
+void check_lines(void){
   //char completed_line=0;
   char lines_completes[NUMERO_FILAS]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
   char clean_lines_completed=0;
-  //Recorremos todas las líneas y columnas cada vez que toca con el suelo o con una pieza
-  // y vamos comprobando si se ha hecho una línea completa
+  char number_line=0;
+  char check_sueltos=0;
+  char item=0;
+
   for(signed int f=0;f<NUMERO_FILAS;f++){
-    if(table[f][0]>7 && table[f][1]>7 && table[f][2]>7 && table[f][3]>7 && table[f][4]>7 && table[f][5]>7 && table[f][6]>7 && table[f][7]>7 && table[f][8]>7 && table[f][9]>7){
-      lines_completes[clean_lines_completed]=f;
-      score+=1;
-      //HUD();
-      clean_lines_completed++;
+        char item0=table[f][0];
+        char item1=table[f][1];
+        char item2=table[f][2];
+        char item3=table[f][3];
+        char item4=table[f][4];
+        char item5=table[f][5];
+        char item6=table[f][6];
+        char item7=table[f][7];
+        char item8=table[f][8];
+        char item9=table[f][9];
+        if(item0>7 && item1>7 && item2>7 && item3>7 && item4>7 && item5>7 && item6>7 && item7>7 && item8>7 && item9>7){
+          lines_completes[clean_lines_completed]=f;
+          score+=1;
+          HUD();
+          clean_lines_completed++;
+          check_sueltos=1;
+        }
+  }
+  //HUD( clean_lines_completed,number_line,0);
+  //Se borra la linea
+  for(char i=0;i<clean_lines_completed;i++){
+    for(signed int f=0;f<NUMERO_FILAS;f++){
+      for(signed int c=0;c<NUMERO_COLUMNAS;c++){
+        if (f==lines_completes[i])
+        {
+          table[f][c]=0;
+          Beep();
+        }
+      }
+    }
+  }
+  if(check_sueltos){
+    for(signed int f=NUMERO_FILAS;f>=0;f--){
+      for(signed int c=0;c<NUMERO_COLUMNAS;c++){
+        while (esta_suelto(f,c)==1)
+        {
+          if (table[f][c]>7)
+          {
+            table[f+1][c]=table[f][c];
+            table[f][c]=0;
+          }
+        }
+      }
     }
   }
   
-  //Se borra la lineas que hemos encintrado y hemos ido almacenando en un array
-  for(char i=0;i<clean_lines_completed;i++){
-    char fila_completada=lines_completes[i];
-    for(char c=0;c<NUMERO_COLUMNAS;c++){
-        table[fila_completada][c]=0;
-        //table[fila_completada][c]=table[fila_completada-1][c];  
-        //Movemos todas las filas hacia abajo
-        for (char w = 0; w < NUMERO_FILAS/2; w++)
-        {
-          table[fila_completada-w][c]=table[fila_completada-(w+1)][c];  
-        }
-    }
-  }
+  
+
+  
 }
 
 
 
-char check_sueltos(){
+char esta_suelto(char fila, char columna){
   char suelto=0;
   for(signed int f=0;f<NUMERO_FILAS;f++){
     for(signed int c=0;c<NUMERO_COLUMNAS;c++){
-      char piece=table[f][c];
-      char piece_down=table[f+1][c];
-      if(piece>7 && piece_down==0){
-        //table[f][c]=table[f][c]-7;
-        //table[f][c]=table[f][c]-7;
-        //Beep();
-        suelto=1;
+      if(f==fila && c==columna){
+        char piece_number=table[f][c];
+        char piece_down=table[f+1][c];
+        if(piece_number>7 && piece_down==0){
+          suelto= 1;
+        }
       }
     }
   }
