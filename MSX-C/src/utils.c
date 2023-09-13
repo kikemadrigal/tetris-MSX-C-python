@@ -3,41 +3,13 @@
 #define UP 1
 #define DOWN 5
 #define ROTATE 10
-char get_piece_Letter(char piece_in_array);
+
 char procesar_entrada_joyStick(void);
 char procesar_entrada_teclado(char movement);
 char is_piece(char piece_number);
 char is_static_piece(char piece_number);
 int lenHelper(float x);
 
-char get_piece_Letter(char piece_in_array){
-  char letter=' ';
-  switch (piece_in_array)
-  {
-    case 1:
-        letter='L';
-        break;
-    case 2:
-        letter='J';
-        break;
-    case 3:
-        letter='Z';
-        break;
-    case 4:
-        letter='S';
-        break;
-    case 5:
-        letter='T';
-        break;
-    case 6:
-        letter='O';
-        break;
-    case 7:
-        letter='I';
-        break;
-  }
-  return letter;
-}
 
 
 
@@ -72,11 +44,7 @@ char procesar_entrada_joyStick(void){
   if (trigger!=0) {
     movement=ROTATE;
   }
-#ifdef __SDCC
-    __asm
-        Halt
-    __endasm; 
-  #endif
+
   return movement;
 }
 
@@ -136,168 +104,196 @@ int lenHelper( float x) {
 }
 
 
-char get_letter(char letter){
+char get_letter(char *letter){
   char letter_in_tileset=0;
   char position_letter_in_tileset=35;
-  switch (letter){
+  char value=*letter;
+  char count=0;
+  if(value==' '){
+    letter_in_tileset=0;
+    return letter_in_tileset;
+  }else if(value=='a' || value=='A'){
+    letter_in_tileset=position_letter_in_tileset;
+    return letter_in_tileset;
+  }else if(value=='E' || value=='E'){
+    letter_in_tileset=42;
+    return letter_in_tileset;
+  }else if(value>='a' && value<='z'){
+    for(char letter='a';letter<='z';letter++){
+      if(value==letter){
+        letter_in_tileset=position_letter_in_tileset+count;
+      }
+      count++;
+    }
+  }else if(value>='A' && value<='Z'){
+    for(char letter='A';letter<='Z';letter++){
+      if(value==letter){
+        letter_in_tileset=position_letter_in_tileset+count;
+      }
+      count++;
+    }
+  }
+  return letter_in_tileset-1;
+  /*switch (value){
     case ' ' :
       letter_in_tileset=0;
+      break;
     case 'A':
-      letter_in_tileset=34;
+      letter_in_tileset=position_letter_in_tileset;
       break;
     case 'a':
-      letter_in_tileset=34;
+      letter_in_tileset=position_letter_in_tileset;
       break;
     case 'B':
-      letter_in_tileset=position_letter_in_tileset;
+      letter_in_tileset=position_letter_in_tileset+1;
       break;
     case 'b':
-      letter_in_tileset=position_letter_in_tileset;
+      letter_in_tileset=position_letter_in_tileset+1;
       break;
     case 'C':
-      letter_in_tileset=position_letter_in_tileset+1;
+      letter_in_tileset=position_letter_in_tileset+2;
       break;
     case 'c':
-      letter_in_tileset=position_letter_in_tileset+1;
+      letter_in_tileset=position_letter_in_tileset+2;
       break;
     case 'D':
-      letter_in_tileset=position_letter_in_tileset+2;
+      letter_in_tileset=position_letter_in_tileset+3;
       break;
     case 'd':
-      letter_in_tileset=position_letter_in_tileset+2;
+      letter_in_tileset=position_letter_in_tileset+3;
       break;
     case 'E':
-      letter_in_tileset=position_letter_in_tileset+3;
+      letter_in_tileset=position_letter_in_tileset+4;
       break;
     case 'e':
-      letter_in_tileset=position_letter_in_tileset+3;
+      letter_in_tileset=position_letter_in_tileset+4;
       break;
     case 'F':
-      letter_in_tileset=position_letter_in_tileset+4;
+      letter_in_tileset=position_letter_in_tileset+5;
       break;
     case 'f':
-      letter_in_tileset=position_letter_in_tileset+4;
+      letter_in_tileset=position_letter_in_tileset+5;
       break;
     case 'G':
-      letter_in_tileset=position_letter_in_tileset+5;
+      letter_in_tileset=position_letter_in_tileset+6;
       break;
     case 'g':
-      letter_in_tileset=position_letter_in_tileset+5;
+      letter_in_tileset=position_letter_in_tileset+6;
       break;
     case 'H': 
-      letter_in_tileset=position_letter_in_tileset+6;
+      letter_in_tileset=position_letter_in_tileset+7;
       break;
     case 'h': 
-      letter_in_tileset=position_letter_in_tileset+6;
+      letter_in_tileset=position_letter_in_tileset+7;
       break;
     case 'I':
-      letter_in_tileset=position_letter_in_tileset+7;
+      letter_in_tileset=position_letter_in_tileset+8;
       break;
     case 'i':
-      letter_in_tileset=position_letter_in_tileset+7;
+      letter_in_tileset=position_letter_in_tileset+8;
       break;
     case 'J':
-      letter_in_tileset=position_letter_in_tileset+8;
+      letter_in_tileset=position_letter_in_tileset+9;
       break;
     case 'j':
-      letter_in_tileset=position_letter_in_tileset+8;
+      letter_in_tileset=position_letter_in_tileset+9;
       break;
     case 'K':
-      letter_in_tileset=position_letter_in_tileset+9;
+      letter_in_tileset=position_letter_in_tileset+10;
       break;
     case 'k':
-      letter_in_tileset=position_letter_in_tileset+9;
+      letter_in_tileset=position_letter_in_tileset+10;
       break;
     case 'L':
-      letter_in_tileset=position_letter_in_tileset+10;
+      letter_in_tileset=position_letter_in_tileset+11;
       break;
     case 'l':
-      letter_in_tileset=position_letter_in_tileset+10;
+      letter_in_tileset=position_letter_in_tileset+11;
       break;
     case 'M':
-      letter_in_tileset=position_letter_in_tileset+11;
+      letter_in_tileset=position_letter_in_tileset+12;
       break;
     case 'm':
-      letter_in_tileset=position_letter_in_tileset+11;
+      letter_in_tileset=position_letter_in_tileset+12;
       break;
     case 'N':
-      letter_in_tileset=position_letter_in_tileset+12;
+      letter_in_tileset=position_letter_in_tileset+13;
       break;
     case 'n':
-      letter_in_tileset=position_letter_in_tileset+12;
+      letter_in_tileset=position_letter_in_tileset+13;
       break;
     case 'O':
-      letter_in_tileset=position_letter_in_tileset+13;
+      letter_in_tileset=position_letter_in_tileset+14;
       break;
     case 'o':
-      letter_in_tileset=position_letter_in_tileset+13;
+      letter_in_tileset=position_letter_in_tileset+14;
       break;
     case 'P':
-      letter_in_tileset=position_letter_in_tileset+14;
+      letter_in_tileset=position_letter_in_tileset+15;
       break;
     case 'p':
-      letter_in_tileset=position_letter_in_tileset+14;
+      letter_in_tileset=position_letter_in_tileset+15;
       break;
     case 'Q':
-      letter_in_tileset=position_letter_in_tileset+15;
+      letter_in_tileset=position_letter_in_tileset+16;
       break;
     case 'q':
-      letter_in_tileset=position_letter_in_tileset+15;
+      letter_in_tileset=position_letter_in_tileset+16;
       break;
     case 'R':
-      letter_in_tileset=position_letter_in_tileset+16;
+      letter_in_tileset=position_letter_in_tileset+17;
       break;
     case 'r':
-      letter_in_tileset=position_letter_in_tileset+16;
+      letter_in_tileset=position_letter_in_tileset+17;
       break;
     case 'S':
-      letter_in_tileset=position_letter_in_tileset+17;
+      letter_in_tileset=position_letter_in_tileset+18;
       break;
     case 's':
-      letter_in_tileset=position_letter_in_tileset+17;
+      letter_in_tileset=position_letter_in_tileset+18;
       break;
     case 'T': 
-      letter_in_tileset=position_letter_in_tileset+18;
+      letter_in_tileset=position_letter_in_tileset+19;
       break;
     case 't': 
-      letter_in_tileset=position_letter_in_tileset+18;
+      letter_in_tileset=position_letter_in_tileset+19;
       break;
     case 'U':
-      letter_in_tileset=position_letter_in_tileset+19;
+      letter_in_tileset=position_letter_in_tileset+20;
       break;
     case 'u':
-      letter_in_tileset=position_letter_in_tileset+19;
+      letter_in_tileset=position_letter_in_tileset+20;
       break;
     case 'V': 
-      letter_in_tileset=position_letter_in_tileset+20;
+      letter_in_tileset=position_letter_in_tileset+21;
       break;
     case 'v': 
-      letter_in_tileset=position_letter_in_tileset+20;
+      letter_in_tileset=position_letter_in_tileset+21;
       break;
     case 'W':
-      letter_in_tileset=position_letter_in_tileset+21;
+      letter_in_tileset=position_letter_in_tileset+22;
       break;
     case 'w':
-      letter_in_tileset=position_letter_in_tileset+21;
+      letter_in_tileset=position_letter_in_tileset+22;
       break;
     case 'X':
-      letter_in_tileset=position_letter_in_tileset+22;
+      letter_in_tileset=position_letter_in_tileset+23;
       break;
     case 'x':
-      letter_in_tileset=position_letter_in_tileset+22;
+      letter_in_tileset=position_letter_in_tileset+23;
       break;
     case 'Y':
-      letter_in_tileset=position_letter_in_tileset+23;
+      letter_in_tileset=position_letter_in_tileset+24;
       break;
     case 'y':
-      letter_in_tileset=position_letter_in_tileset+23;
+      letter_in_tileset=position_letter_in_tileset+24;
       break;
     case 'Z':
-      letter_in_tileset=position_letter_in_tileset+24;
+      letter_in_tileset=position_letter_in_tileset+25;
       break;
     case 'z':
-      letter_in_tileset=position_letter_in_tileset+24;
+      letter_in_tileset=position_letter_in_tileset+25;
       break;
-  }
-  return letter_in_tileset;
+  }*/
+
 }

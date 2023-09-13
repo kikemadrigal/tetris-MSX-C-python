@@ -9,6 +9,8 @@
 #include "fusion-c/header/vdp_graph1.h"
 //#include "fusion-c/header/vdp_graph2.h"
 #include "fusion-c/header/vdp_sprites.h"
+#include "fusion-c/header/ayfx_player.h"
+#include "fusion-c/header/pt3replayer.h"
 #include "src/definitions.c"
 #include "src/pieces.c"
 #include "src/utils.c"
@@ -37,10 +39,13 @@ void debug(char word1, char word2, char word3);
 void print_message_with_pause(char message[]);
 void menu(void);
 void show_end_game(void);
-
+void FT_CheckFX (void);
+void load_buffer_sound_effects(void);
+void FT_SetName( FCB *p_fcb, const char *p_name );
+void load_buffer_music(void);
 //La tabla y los tamaños de la tabla está definidos en src/definitions.c
-
-char piece_number=1;
+TPiece *piece_active;
+//char piece_number=1;
 int counter=0;
 int old_counter=0;
 
@@ -52,12 +57,16 @@ int level=0;
 char game_over=0;
 char new_piece=0;
 int time=0;
+//Music
+#define SONG_BUFFER_TAM 264
+unsigned char songBuffer[SONG_BUFFER_TAM];  
+char *fileNameSong;
+//Efectos
+#define SONG_EFFECT_TAM 1207
+char *fileNameSongEffects;
+
 void main(void) 
 {
-
-
-
-
   inicio:
   KeySound(0);
   SetColors(15,1,1);
@@ -65,6 +74,13 @@ void main(void)
   menu();
   Screen(2);
   inicializar_sprites();
+  init_pieces();
+  //Cargamos los efectos de sonido  
+  InitPSG(); 
+  InitFX();
+  load_buffer_sound_effects();
+  load_buffer_music();
+
   //Tileset
   unsigned int vram_adr_tiles_pat=Peekw(0x0);		
   unsigned int vram_adr_tiles_col=Peekw(0x2000);		
@@ -81,25 +97,34 @@ void main(void)
   paint_stage();
   print_table();
   insert_piece_into_table();
+  //https://zxart.ee/spa/music/base-de-datos/rating:4/format:PT3/sortParameter:votes/sortOrder:rand/resultsType:zxitem/
   print_message_with_pause("Press any key to start");
-  KillKeyBuffer();
+  //print_message_with_pause("mono defghijklmnopqrstuvwxyz");
   game_over=0;
   old_counter=0;
   level=0;
+ 
   while (game_over==0)
   {
+     //Actualizar música y efectos
+    FT_CheckFX();
+
     movement=procesar_entrada_joyStick();
     time=RealTimer();
     counter=time/60;
     if ((counter-old_counter)>0.20){
       move_piece(DOWN);
-      HUD();
       old_counter=counter;
     }
     if(movement!=0){
+      #ifdef __SDCC
+        __asm
+            Halt
+            Halt
+        __endasm; 
+      #endif
       move_piece(movement);   
     }
-    //check_lines();
   }
   goto inicio;
 }
@@ -127,15 +152,19 @@ void move_piece(char movement){
   }
 
   char rotation_item=0;
-  signed char indezex[4][2];
-  signed int new_indezex[4][2];
+  signed char array_to_delete[4][2];
+  signed int array_para_escribir[4][2];
   char item=0;
   char toca_abajo=0;
-  char permitido=1;
+  char letter_down=0;
+  char letter_left=0;
+  char letter_right=0;
+  char allowed_left=1;
+  char allowed_right=1;
   //Recorremos todo el tablero en busca de los 4 itms de la pieza
   for(signed int f=0;f<NUMERO_FILAS;f++){
     for(signed int c=0;c<NUMERO_COLUMNAS;c++){
-      if(table[f][c]==piece_number){
+      if(table[f][c]==piece_active->number){
         if (movement==UP){
           //new_row_index=f-1;
           //new_column_index=c;
@@ -149,7 +178,7 @@ void move_piece(char movement){
           new_row_index=f;
           new_column_index=c-1;
         }else if(movement==ROTATE){
-          switch (piece_number)
+          switch (piece_active->number)
           {
             //Si es la L
             case 1:
@@ -187,40 +216,29 @@ void move_piece(char movement){
                 new_column_index=c+iRotations[rotation][rotation_item][1];
                 break;
           }
-          if( new_row_index>=NUMERO_FILAS || new_column_index<0 || new_column_index>=NUMERO_COLUMNAS){
+          if( new_row_index>=NUMERO_FILAS || new_column_index<0 || new_column_index>=NUMERO_COLUMNAS || table[new_row_index][new_column_index]>7){
             rotation--;
             //Beep();
             return;
           }
           rotation_item+=1;
         }
-
-        
-        /*
-        if(new_row_index<6 && new_piece==0){
-          //game_over=1;
-        }else if(new_row_index>5 && new_row_index<10 && new_piece==1){
-          new_piece=0;
-        }
-        debug(new_row_index,new_piece,game_over);
-        */
-        
-        
-        char letter_down=table[f+1][c];
-        /*char letter_left=table[f][c-1];
-        char letter_right=table[f][c+1];
-        if(letter_left!=0 || letter_right!=0)
+        letter_down=table[f+1][c];
+        letter_left=table[f][c-1];
+        letter_right=table[f][c+1];
+        //Si en alguno de los 4 tiles encontramos una pieza estática no dejamos que se mueva
+        if (letter_left>7)
         {
-          //Beep();
-          permitido=0;
-        }*/
-
- 
+          allowed_left=0;
+        }else if(letter_right>7){
+          allowed_right=0;
+        }
+       
         //if(is_static_piece(letter_down) && !is_static_piece(letter_left) && !is_static_piece(letter_right)){
         //Si la pieza de abajo es una estática o Si es la última fila la convertimos en estática salimos, ponemos rotation 0 ya que es global 
         if(is_static_piece(letter_down) || new_row_index>=NUMERO_FILAS){
-           Beep();
-
+          PlayFX(7);
+          //Beep();
           if(new_row_index<6) {
             game_over=1;
             show_end_game();
@@ -229,20 +247,11 @@ void move_piece(char movement){
             memcpy(table,table_empty,sizeof(table));
           }else{
             rotation=0;
-            convertir_piece_to_static(piece_number); 
+            convertir_piece_to_static(piece_active->number); 
             //Kitamos todas las líneas compleatadas
             check_completed_lines();
-            //Miramos i hay alguna pieza suelta
-            //while(check_sueltos()==1){
-              //Beep();
-              //move_piece(DOWN);
-              //check_completed_lines();
-            //}           
             insert_piece_into_table();
-
           }
- 
-
           return;
         }
 
@@ -253,14 +262,18 @@ void move_piece(char movement){
         if(new_column_index<0 || new_column_index>=NUMERO_COLUMNAS){
           return;
         }else{
-          
-          indezex[item][0]=f;
-          indezex[item][1]=c;
-          new_indezex[item][0]=new_row_index;
-          new_indezex[item][1]=new_column_index;
+          array_to_delete[item][0]=f;
+          array_to_delete[item][1]=c;
+          array_para_escribir[item][0]=new_row_index;
+          if(movement==LEFT && allowed_left==0 || movement==RIGHT && allowed_right==0){
+              array_para_escribir[item][1]=c;
+              //Beep();
+              return;
+          }else{
+            array_para_escribir[item][1]=new_column_index;
+          }
           item++;
         }
-
       }//Fin del if=X
     }//Fin del for c
   }//Fin del for f
@@ -270,11 +283,13 @@ void move_piece(char movement){
 
   //Ponemos un 0 o la letra según lo hayamos almacenado en los 2 arrays
   for(char i=0;i<4;i++){
-    table[indezex[i][0]][indezex[i][1]]=0;
+    table[array_to_delete[i][0]][array_to_delete[i][1]]=0;
   }
   for(char i=0;i<4;i++){
-    table[new_indezex[i][0]][new_indezex[i][1]]=piece_number;
+    table[array_para_escribir[i][0]][array_para_escribir[i][1]]=piece_active->number;
   }
+
+  
   print_table();
 }
 
@@ -286,11 +301,15 @@ void HUD(){
     char value_score=score%10;
     Vpoke(6390+i,24+value_score);
   }*/
-  Vpoke(6390,25+score);
+  //Vpoke(6390,25+score);
+  Vpoke(6358,25+score);
   //Imprimimos la letra
-  Vpoke(6486,25+piece_number);
+  //Vpoke(6486,25+piece_number);
+  Vpoke(6454,25+piece_active->number);
+
   //imprimimos el tiempo
-  Vpoke(6582,25+level);
+  //Vpoke(6582,25+level);
+  Vpoke(6550,25+level);
 }
 
 void debug(char word1, char word2, char word3){
@@ -309,57 +328,52 @@ void debug(char word1, char word2, char word3){
 
 void insert_piece_into_table(void){
   //Obtenemos la letra que vamos a soltar
-  char rand_piece=rand()%(8-1)+1;
-  piece_number=rand_piece;
-  
-  switch (rand_piece)
+  //char rand_piece=rand()%(8-1)+1;
+  //piece_number=rand_piece;
+  char color=0;
+  TPiece *first_piece=create_piece_sprite();
+  piece_active=first_piece;
+  memcpy(table,piece_active->definition,sizeof(lPiece));
+  switch (piece_active->number)
   {
     //char array_numbre_pieces[]={'L','J','Z','S','O','T','I'};
     //Si es la L
     case 1:
         memcpy(table,lPiece,sizeof(lPiece));
-        //Pieza L color naranja 
-        PutSprite(piece_number,0,140,140,9);
         break;
     //Si es la J
     case 2:
-      //Pieza J color azul  
         memcpy(table,jPiece,sizeof(jPiece));
-        PutSprite(piece_number,0,140,140,7);
         break;
     //Si es la Z
     case 3:
-        //Pieza Z color rojo
         memcpy(table,zPiece,sizeof(zPiece));
-        PutSprite(piece_number,0,140,140,6);
         break;
     //Si es la S
     case 4:
-        //Pieza S color verde
         memcpy(table,sPiece,sizeof(sPiece));
-        PutSprite(piece_number,0,140,140,2);
         break;
-    //Si es la O
+    //Si es la t
     case 5:
-        //Pieza T color Morado  
-        memcpy(table,tPiece,sizeof(oPiece));
-        PutSprite(piece_number,0,140,140,13);
+        memcpy(table,tPiece,sizeof(tPiece));
+        color=13;
         break;
-    //Si es la T
+    //Si es la o
     case 6:
-        //Pieza O color amarillo
-        memcpy(table,oPiece,sizeof(tPiece));
-        PutSprite(piece_number,0,140,140,11);
+        memcpy(table,oPiece,sizeof(oPiece));
         break;
     //Si es la I
     case 7:
-        //Pieza I color Cyan
         memcpy(table,iPiece,sizeof(iPiece));
-        PutSprite(piece_number,0,140,140,5);
         break;
   }
+
+  for (int i=0; i<4; i++){
+      TPiece *piece=&array_sprites_pieces[i];
+      PutSprite(i, piece->number*4, 138+(i*20),132, piece->color);
+  }
+  HUD();
   print_table();
-  //HUD();
 }
 
 
@@ -386,7 +400,7 @@ void check_completed_lines(void){
     if(table[f][0]>7 && table[f][1]>7 && table[f][2]>7 && table[f][3]>7 && table[f][4]>7 && table[f][5]>7 && table[f][6]>7 && table[f][7]>7 && table[f][8]>7 && table[f][9]>7){
       lines_completes[clean_lines_completed]=f;
       score+=1;
-      //HUD();
+      PlayFX(1);
       clean_lines_completed++;
     }
   }
@@ -466,11 +480,18 @@ void paint_stage(void){
 void print_message_with_pause(char *message ){
     int i=0;
     while(message[i]!='\0'){
-      char value=get_letter(message[i]);
+      char value=get_letter(&message[i]);
       Vpoke(6848+i,value);
       i++;
     }
-    WaitKey();
+    //WaitKey();
+
+    KillKeyBuffer();
+    for(long q=0;q<60000;q++);
+    while(Inkey()!=32){
+        FT_CheckFX();
+    }
+
     for (char i=0;i<32;i++) Vpoke(6848+i,15);
 }
 
@@ -521,24 +542,67 @@ void inicializar_sprites(){
   Sprite16(); 
   // tamaño de sprites sin ampliar   
   SpriteSmall(); 
-  SetSpritePattern(0,sprite_piece_l,32);
-  SetSpritePattern(1*4,sprite_piece_j,32);
-  SetSpritePattern(2*4,sprite_piece_z,32);
-  SetSpritePattern(3*4,sprite_piece_s,32);
-  SetSpritePattern(4*4,sprite_piece_o,32);
+  SetSpritePattern(0,sprite_piece_zero,32);
+  SetSpritePattern(1*4,sprite_piece_l,32);
+  SetSpritePattern(2*4,sprite_piece_j,32);
+  SetSpritePattern(3*4,sprite_piece_z,32);
+  SetSpritePattern(4*4,sprite_piece_s,32);
   SetSpritePattern(5*4,sprite_piece_t,32);
-  SetSpritePattern(6*4,sprite_piece_i,32);
-
+  SetSpritePattern(6*4,sprite_piece_o,32);
+  SetSpritePattern(7*4,sprite_piece_i,32);
 }
 
 
 
 
+void FT_CheckFX (void)
+{ 
+    EnableInterupt();
+    Halt();
+    DisableInterupt();
+    UpdateFX();
+    //PT3Rout();
+    //PT3Play();
+    EnableInterupt();
+}
 
+void load_buffer_sound_effects(void){
+    FCB TFileEffects; 
+    fileNameSongEffects="effects.afb";
+      //afbdb es un puntero que está definido en ayfx_player.h
+    afbdata=MMalloc(SONG_EFFECT_TAM);
+    FT_SetName( &TFileEffects, fileNameSongEffects);
+    fcb_open( &TFileEffects );
+    fcb_read( &TFileEffects, afbdata, SONG_EFFECT_TAM );  
+    fcb_close( &TFileEffects );
+}
+void load_buffer_music(void){
+  FCB TFileMusic; 
+  fileNameSong="song1.pt3";
+  FT_SetName( &TFileMusic, fileNameSong);
+  fcb_open( &TFileMusic );
+  fcb_read( &TFileMusic, &songBuffer[0], SONG_BUFFER_TAM );  
+  fcb_close( &TFileMusic );
+  //PT3Init (fileNameSong, 0);
+}
 
-
-
-
+void FT_SetName( FCB *p_fcb, const char *p_name )  // Routine servant à vérifier le format du nom de fichier
+{
+  char i, j;
+  memset( p_fcb, 0, sizeof(FCB) );
+  for( i = 0; i < 11; i++ ) {
+    p_fcb->name[i] = ' ';
+  }
+  for( i = 0; (i < 8) && (p_name[i] != 0) && (p_name[i] != '.'); i++ ) {
+    p_fcb->name[i] =  p_name[i];
+  }
+  if( p_name[i] == '.' ) {
+    i++;
+    for( j = 0; (j < 3) && (p_name[i + j] != 0) && (p_name[i + j] != '.'); j++ ) {
+      p_fcb->ext[j] =  p_name[i + j] ;
+    }
+  }
+}
 
 
 

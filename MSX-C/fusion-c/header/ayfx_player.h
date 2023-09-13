@@ -276,8 +276,8 @@ char TestFX(void) {
 
 /* Libera la memoria ocupada por los objetos del driver */
 void FreeFX(void) {
-  free(afbdata);
-  free(noises);
+  //free(afbdata);
+  //free(noises);
 }
 
 
