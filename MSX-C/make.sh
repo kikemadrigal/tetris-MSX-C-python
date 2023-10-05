@@ -22,13 +22,17 @@
 
 
 
-APP="test"
+APP="tetris"
 
 #  echo Creando el programa para la depuración en WSL o gitbash
-# SDCC --code-loc 0x106 --data-loc 0x0 --disable-warning 196 -mz80 --no-std-crt0 --opt-code-size fusion.lib -Lfusion-c/lib/ fusion-c/include/crt0_msxdos.rel ${APP}.c
-# ./tools/hex2bin/hex2bin.exe -e com ${APP}.ihx
-# mv ${APP}.com dsk/
-# ./tools/openMSX/openmsx.exe -machine Philips_NMS_8255  -diska dsk/ &
+SDCC --code-loc 0x106 --data-loc 0x0 --disable-warning 196 -mz80 --no-std-crt0 --opt-code-size fusion.lib -Lfusion-c/lib/ fusion-c/include/crt0_msxdos.rel ${APP}.c
+./tools/hex2bin/windows/hex2bin.exe -e com ${APP}.ihx
+mv ${APP}.com dsk/
+./tools/emulators/openMSX/openmsx.exe -machine Philips_NMS_8255  -diska dsk/ &
+
+
+
+
 
 
 
@@ -51,15 +55,14 @@ APP="test"
 
 
 
-
-
-
- echo Creando el programa para MAC
+# echo Creando el programa para MAC
 # problemas de compilación? https://www.msx.org/forum/msx-talk/development/fusion-c-and-sdcc-420
-sdcc --sdcccall 0 --code-loc 0x106 --data-loc 0x0 --disable-warning 196 -mz80 --no-std-crt0 --opt-code-size fusion.lib  -L ./Fusion-c/lib/ ./fusion-c/include/crt0_msxdos.rel ${APP}.c
-./Tools/Hex2bin/mac/hex2bin -e com ${APP}.ihx
-mv ${APP}.com dsk/
-/Applications/openMSX.app/Contents/MacOS/openMSX -machine Philips_NMS_8255 -script ./Tools/openMSX/emul_start_config.txt &
+# sdcc --sdcccall 0 --code-loc 0x106 --data-loc 0x0 --disable-warning 196 -mz80 --no-std-crt0 --opt-code-size fusion.lib  -L ./Fusion-c/lib/ ./fusion-c/include/crt0_msxdos.rel ${APP}.c
+# ./Tools/Hex2bin/mac/hex2bin -e com ${APP}.ihx
+# mv ${APP}.com dsk/
+# /Applications/openMSX.app/Contents/MacOS/openMSX -machine Philips_NMS_8255 -script ./Tools/openMSX/emul_start_config.txt &
+
+
 
 
 
@@ -95,5 +98,3 @@ rm -rf *.sym
 #gcc -g fusion-c/lib/fusion.lib -I. ${APP}.c -o ${APP}
 # ./tools/openMSX/openmsx.exe -carta ${APP}.rom -machine Philips_NMS_8255 &
 #ddd& --trace --debugger ./openmsxgdb.py ${APP} 2> ddd_openmsx.log
-
-
